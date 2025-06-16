@@ -1,0 +1,37 @@
+{
+  "Serilog": {
+    "MinimumLevel": "Information",
+    "WriteTo": [
+      {
+        "Name": "File",
+        "Args": {
+          "pathFormat": "logs/{BaseFileName}.txt",
+          "rollingInterval": "Day"
+        }
+      }
+    ]
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.Hosting.Lifetime": "Information"
+    }
+  },
+  "EventLog": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.Hosting.Lifetime": "Information"
+    }
+  },
+  "installationDirectory": "C:\\Program Files (x86)\\<USERNAME>\\UserMonitor",
+  "api": {
+    "url": "http://localhost:5237/"
+  },
+  "interval_1": 5,
+  "interval_2": 10,
+  "interval_3": 30,
+  "interval_4": 60,
+  "interval_5": 300,
+  "interval_6": 60,
+  "workinghours": "9:30-19:00"
+}

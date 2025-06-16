@@ -1,0 +1,216 @@
+# Define temp paths and URL# Define temp paths and URLs
+
+$tempFolder = "$env:TEMP\DotNetInstall"
+
+$runtimeUrl = "<YOUR_SHAREPATH>/eTrk/dotnet-runtime-8.0.12-win-x64.exe"
+
+$sdkUrl = "<YOUR_SHAREPATH>/eTrk/dotnet-sdk-8.0.302-win-x64.exe"
+
+$runtimeInstaller = "$tempFolder\dotnet-runtime-8.0.12.exe"
+
+$sdkInstaller = "$tempFolder\dotnet-sdk-8.0.302.exe"
+
+$runtimeVersion = "8.0.12"
+
+$sdkVersion = "8.0.302"
+
+# Create temp folder if not exists
+
+if (-not (Test-Path $tempFolder)) {
+
+    New-Item -ItemType Directory -Path $tempFolder | Out-Null
+
+}
+
+# Functions to check .NET installations
+
+function Is-RuntimeInstalled { param([string]$version); return (& dotnet --list-runtimes 2>$null | Select-String $version).Count -gt 0 }
+
+function Is-SDKInstalled { param([string]$version); return (& dotnet --list-sdks 2>$null | Where-Object { $_ -like "$version*" }).Count -gt 0 }
+
+# Install Runtime
+
+if (-not (Is-RuntimeInstalled -version $runtimeVersion)) {
+
+    Write-Host "Installing .NET Runtime $runtimeVersion..."
+
+    Invoke-WebRequest -Uri $runtimeUrl -OutFile $runtimeInstaller -UseBasicParsing
+
+    Start-Process -FilePath $runtimeInstaller -ArgumentList "/install", "/quiet", "/norestart" -Wait
+
+} else {
+
+    Write-Host ".NET Runtime $runtimeVersion already installed."
+
+}
+
+# Install SDK
+
+if (-not (Is-SDKInstalled -version $sdkVersion)) {
+
+    Write-Host "Installing .NET SDK $sdkVersion..."
+
+    Invoke-WebRequest -Uri $sdkUrl -OutFile $sdkInstaller -UseBasicParsing
+
+    Start-Process -FilePath $sdkInstaller -ArgumentList "/install", "/quiet", "/norestart" -Wait
+
+} else {
+
+    Write-Host ".NET SDK $sdkVersion already installed."
+
+}
+
+# Stop processes
+
+$processes = @("monservice.exe", "monitoruser.exe")
+
+foreach ($proc in $processes) {
+
+    $runningProc = Get-Process -Name ($proc -replace ".exe$", "") -ErrorAction SilentlyContinue
+
+    if ($runningProc) {
+
+        Write-Host "Stopping process: $proc"
+
+        Stop-Process -Name ($proc -replace ".exe$", "") -Force
+
+    }
+
+}
+
+# Disable existing scheduled task
+
+$taskName = "TaskScheduler"
+
+try {
+
+    $task = Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
+
+    if ((Get-ScheduledTaskInfo -TaskName $taskName).State -eq 'Running') {
+
+        Stop-ScheduledTask -TaskName $taskName
+
+    }
+
+    Disable-ScheduledTask -TaskName $taskName
+
+} catch {
+
+    Write-Host "Scheduled task '$taskName' not found. Skipping..."
+
+}
+
+# Download and extract ZIP
+
+$zipUrl = "<YOUR_SHAREPATH>/eTrk/<FOLDER_NAME>.zip"
+
+$zipName = <FOLDER_NAME>
+
+$tempExtractPath = "$env:TEMP\ExtractedZip"
+
+$destinationPath = "C:\Program Files (x86)\<USERNAME>"
+
+$localZipPath = "$env:TEMP\$zipName"
+
+# Download ZIP
+
+Invoke-WebRequest -Uri $zipUrl -OutFile $localZipPath
+
+# Clean and extract
+
+if (Test-Path $tempExtractPath) {
+
+    Remove-Item $tempExtractPath -Recurse -Force
+
+}
+
+Expand-Archive -Path $localZipPath -DestinationPath $tempExtractPath -Force
+
+# Ensure destination exists
+
+if (-Not (Test-Path $destinationPath)) {
+
+    New-Item -Path $destinationPath -ItemType Directory
+
+}
+
+# Copy required folders only
+
+$foldersToMove = @("MonitorService", "MonitorUser")
+
+foreach ($folder in $foldersToMove) {
+
+    $sourceFolder = Join-Path -Path $tempExtractPath -ChildPath "<USERNAME>\$folder"
+
+    $destFolder = Join-Path -Path $destinationPath -ChildPath $folder
+
+    if (Test-Path $sourceFolder) {
+
+        Copy-Item -Path $sourceFolder -Destination $destFolder -Recurse -Force
+
+    } else {
+
+        Write-Warning "Folder $folder not found in the ZIP archive."
+
+    }
+
+}
+
+# Cleanup temp files
+
+Remove-Item $localZipPath -Force
+
+Remove-Item $tempExtractPath -Recurse -Force
+
+Write-Host "MonitorUser and MonitorService folders deployed."
+
+# Register scheduled task from XML
+
+$BlobUrl = "<YOUR_SHAREPATH>/TaskScheduler.xml"
+
+$LocalFilePath = "C:\Temp\TaskScheduler.xml"
+
+if (-not (Test-Path -Path "C:\Temp")) {
+
+    New-Item -ItemType Directory -Path "C:\Temp" -Force
+
+}
+
+Invoke-WebRequest -Uri $BlobUrl -OutFile $LocalFilePath
+
+if (Test-Path -Path $LocalFilePath) {
+
+    # Remove existing task if it exists
+
+    try {
+
+        Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction Stop
+
+        Write-Host "Old scheduled task removed."
+
+    } catch {
+
+        Write-Host "No existing task found to remove."
+
+    }
+
+    # Register from XML
+
+    $XmlContent = Get-Content -Path $LocalFilePath -Raw
+
+    Register-ScheduledTask -TaskName $taskName -Xml $XmlContent -Force
+
+    Enable-ScheduledTask -TaskName $taskName
+
+    Start-ScheduledTask -TaskName $taskName
+
+    Write-Host "Scheduled task '$taskName' created and started."
+
+    Remove-Item -Path $LocalFilePath -Force
+
+} else {
+
+    Write-Error "The XML file was not found."
+
+}
+ 
