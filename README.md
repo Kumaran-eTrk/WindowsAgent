@@ -85,7 +85,7 @@ In the pop-up, select the project file Monitoruser and **specify publish items i
     2. Create the task
 
     3. Go to the Triggers Tab --> Select New options.
-       Please create a Schedule, Log on & Startup triggers and refer the below mentioned Screenshots\*\*
+       Please create a Schedule, Log on & Startup triggers
 
     4. Go to the Action tab and Select New .Click Browse --> select installation path, Please refer below, we added the default location path
 
@@ -137,3 +137,5 @@ In the pop-up, select the project file Monitoruser and **specify publish items i
    - desinationPath
 
 Also, update the **TaskScheduler.xml** file by modifying the executable path to reflect the correct location of the MonitorService.exe
+
+## For Futhermore Information, you can visit to our documentation site "https://etrk.kumaran.com/docs/" to learn more about application functionality.
